@@ -1,8 +1,7 @@
 import datetime
-from os import listdir
+from os import remove
 from pathlib import Path
 from subprocess import Popen, PIPE
-from tempfile import NamedTemporaryFile
 from typing import Optional, List
 from zipfile import ZipFile
 
@@ -17,23 +16,44 @@ KEY_PATH = Path('keys')
 FILES_PATH = Path('files')
 
 
-def available_keys(username: str) -> List[str]:
-    path = KEY_PATH / username
-    return list({Path(fn).stem for fn in listdir(path)})
+class ApiException(Exception):
+    message = ""
 
 
-def check_cert(username: str) -> bool:
+class CertificateNotExists(ApiException):
+    message = "certificate not exists"
+
+
+class CertificateExpired(ApiException):
+    message = "certificate expired"
+
+
+def available_keys(username: str) -> List[dict]:
+    try:
+        check_cert(username)
+    except CertificateNotExists:
+        return []
+    except CertificateExpired:
+        return [{'name': username, 'is_expired': True}]
+    return [{'name': username, 'is_expired': False}]
+
+
+def check_cert(username: str):
     path = KEY_PATH / username / f'{username}.crt'
     try:
         with path.open('rb') as f:
-            load_certificate(FILETYPE_PEM, f.read())
+            cert = load_certificate(FILETYPE_PEM, f.read())
     except Exception:
-        return False
-    return True
+        raise CertificateNotExists()
+    start = datetime.datetime.strptime(cert.get_notBefore().decode(), '%Y%m%d%H%M%SZ')
+    end = datetime.datetime.strptime(cert.get_notAfter().decode(), '%Y%m%d%H%M%SZ')
+    now = datetime.datetime.now()
+    if not (start <= now <= end):
+        raise CertificateExpired()
 
 
-def check_key(username: str, key_name: str, passphrase: Optional[str] = None) -> bool:
-    path = KEY_PATH / username / f'{key_name}.priv'
+def check_key(username: str, passphrase: Optional[str] = None) -> bool:
+    path = KEY_PATH / username / f'{username}.priv'
     try:
         with path.open('rb') as f:
             load_privatekey(FILETYPE_PEM, f.read(), passphrase=passphrase)
@@ -47,18 +67,25 @@ def check_file(fileobj) -> bool:
 
 
 def convert_to_pdfa(fileobj) -> bytes:
-    return fileobj.read()
+    timestamp = datetime.datetime.now().timestamp()
     suffix = Path(fileobj.filename).suffix
-    with NamedTemporaryFile(prefix=suffix) as temp:
+    path = Path(f'{timestamp}{suffix}')
+    filename = path.resolve()
+    with open(filename, 'wb') as temp:
         fileobj.save(temp)
-        p = Popen(['libreoffice', '--headless', '--convert-to', 'pdf', temp.name], stdout=PIPE)
-        out, err = p.communicate()
-        return out
+    p = Popen(['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', path.parent.resolve(), filename],
+              stdout=PIPE, stderr=PIPE)
+    p.communicate()
+    remove(filename)
+    with open(f'{timestamp}.pdf', 'rb') as f:
+        content = f.read()
+    remove(f'{timestamp}.pdf')
+    return content
 
 
-def sign_file(username: str, key_name: str, data: bytes, passphrase: Optional[str] = None,
+def sign_file(username: str, data: bytes, passphrase: Optional[str] = None,
               digest: str = 'sha256') -> bytes:
-    path_to_key = KEY_PATH / username / f'{key_name}.priv'
+    path_to_key = KEY_PATH / username / f'{username}.priv'
     with path_to_key.open('rb') as f:
         private_key = load_privatekey(FILETYPE_PEM, f.read(), passphrase=passphrase)
     signature = sign(private_key, data, digest=digest)

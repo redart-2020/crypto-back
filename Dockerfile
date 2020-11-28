@@ -1,6 +1,6 @@
 FROM python:3.8-slim-buster
 
-RUN mkdir files && mkdir -p /usr/share/man/man1
+RUN mkdir -p /app/files && mkdir -p /usr/share/man/man1
 RUN pip install poetry
 RUN echo deb http://ftp.ru.debian.org/debian/ buster main non-free contrib >> /etc/apt/sources.list \
     && apt-get update \

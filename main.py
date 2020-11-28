@@ -1,7 +1,7 @@
 from pathlib import Path
+from urllib.parse import quote
 
 from flask import Flask, request, render_template
-from werkzeug.utils import secure_filename
 
 from core import (
     ApiException,
@@ -46,10 +46,10 @@ def sign(username):
         return "cant convert to pdf", 400
 
     signature = sign_file(username, pdf, key_pass)
-    filename = Path(secure_filename(f.filename)).stem
+    filename = Path(f.filename).stem
     archive = pack_file_with_signature(pdf, signature, filename)
     return archive, [('Content-Type', 'application/zip'),
-                     ('Content-Disposition', f'attachment; filename="{filename}.zip"')]
+                     ('Content-Disposition', f'attachment; filename="{quote(filename)}.zip"')]
 
 
 @app.route('/keys/<username>')

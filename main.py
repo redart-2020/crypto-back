@@ -15,12 +15,13 @@ from core import (
 )
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    keys = available_keys('tim')
+    return render_template('index.html', key=keys[0])
 
 
 @app.route('/sign/<username>', methods=['post'])

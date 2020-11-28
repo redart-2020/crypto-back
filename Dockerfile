@@ -17,4 +17,4 @@ RUN poetry config virtualenvs.create false \
 
 COPY . /app
 
-CMD ["python", "main.py"]
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "main:app"]

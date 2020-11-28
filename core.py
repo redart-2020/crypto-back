@@ -10,14 +10,14 @@ from OpenSSL.crypto import load_certificate, load_privatekey, sign, verify as _v
 # генерация ключа - openssl genrsa -out keys/tim/tim.priv 1024
 #  openssl rsa -in keys/tim/tim.priv -pubout > keys/tim/tim.pub
 # генерация серта - openssl req -x509 -sha256 -nodes -newkey rsa:4096 -key key -days 30 -out keys/tim/tim.crt
-# подпись файла openssl dgst -sha256 -sign keys/tim/tim.priv main.py
+# подпись файла openssl dgst -sha256 -sign keys/tim/tim.priv file.docx
 
 KEY_PATH = Path('keys')
 FILES_PATH = Path('files')
 
 
 class ApiException(Exception):
-    message = ""
+    message: str
 
 
 class CertificateNotExists(ApiException):

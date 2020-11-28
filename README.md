@@ -1,13 +1,19 @@
 # Quick start
 
-launch:
+## launch
+a) docker:
 ```shell script
 docker build -t hack .
-docker run --rm -ti -p 5000:5000
+docker run --rm -ti -p 8000:8000 hack
+```
+b) local:
+```
+pip3 install poetry
+poetry install
+poetry run gunicorn main:app
 ```
 
-try:
+## try
 ```shell script
-http http://localhost:5000/keys/tim
-http http://localhost:5000/sign/tim file@main.py key_name=tim
+http http://localhost:8000/sign/tim file@document.docx
 ```
